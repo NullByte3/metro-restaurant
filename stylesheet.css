@@ -21,6 +21,12 @@ h2, p {
   box-shadow: 0 4px 0px #333;
 }
 
+#auth-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .logo {
   font-weight: bold;
   font-size: 20px;
@@ -195,9 +201,29 @@ h2, p {
   box-shadow: 2px 2px 0px #333; 
 }
 
+.favorite-button {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.2s;
+}
+
+.favorite-button:hover {
+  transform: scale(1.2);
+}
+
+.favorite-button.active {
+  color: #ffd700;
+}
+
 .diet-tag {
   display: inline-block;
-  padding: 2px 6px; 
+  padding: 2px 6px;
   margin-right: 6px; 
   margin-bottom: 4px; 
   font-size: 0.8em; 

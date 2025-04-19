@@ -13,11 +13,38 @@
     <header class="navbar">
         <div class="logo">Peppa Piga Pizzeria</div>
         <div id="auth-controls">
-            <span id="user-info" class="hidden" style="margin-right: 10px;"></span>
-            <button id="logout-button" class="retro-button hidden" style="background-color: #ff6b6b;">LOGOUT</button>
             <button id="login-button" class="retro-button" style="background-color: #6ed4dd">LOGIN</button>
+            <span id="user-info" class="hidden" style="display: inline-flex; align-items: center; gap: 10px; margin-right: 10px;"></span>
+            <button id="logout-button" class="retro-button hidden" style="background-color: #ff6b6b;">LOGOUT</button>
+            <button id="edit-profile-button" class="retro-button hidden" style="background-color: #94d82d;">EDIT PROFILE</button>
         </div>
     </header>
+
+    <div id="update-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="update-view">
+                <h2>Update Profile</h2>
+                <form id="update-form">
+                    <input type="text" id="update-username" placeholder="Leave blank to keep current" class="retro-input"><br><br>
+                    <input type="email" id="update-email" placeholder="Leave blank to keep current" class="retro-input"><br><br>
+                    <input type="password" id="update-password" placeholder="New Password (leave blank to keep current)" class="retro-input"><br><br>
+                    <div style="margin: 15px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                            <input type="file" id="update-avatar" accept="image/*" class="hidden">
+                            <button type="button" onclick="document.getElementById('update-avatar').click()" class="retro-button">📤 Upload Avatar?</button>
+                            <span id="selected-filename" style="color: #666;"></span>
+                        </div>
+                        <p id="avatar-upload-status" class="error hidden"></p>
+                    </div>
+                    <div style="display: flex; justify-content: center; margin-top: 15px;">
+                        <button type="submit" class="retro-button">Update Profile</button>
+                    </div>
+                    <p id="update-error" class="error hidden"></p>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div id="login-modal" class="modal">
         <div class="modal-content">
@@ -46,12 +73,23 @@
         </div>
     </div>
     <main class="content">
-        <h2>Today's Student Restaurant Menus</h2>
+        <h2 id="menu-date-heading">Menus for Today</h2>
 
-        <div id="filter-controls" style="margin-bottom: 20px; text-align: center;">
-            <label for="diet-filter-input" style="margin-right: 5px;">Filter by diets (G, L, VEG, etc.):</label>
-            <input type="text" id="diet-filter-input" class="retro-input" placeholder="Enter diet codes...">
-            <button id="clear-filter-button" class="retro-button" style="margin-left: 10px; background-color: #f0ad4e;">Clear</button>
+        <div id="date-selection" style="margin-top: 20px; margin-bottom: 10px; text-align: center;">
+            <label for="menu-date-input" style="margin-right: 10px; font-weight: bold;">Select Date:</label>
+            <input type="date" id="menu-date-input" class="retro-input" style="padding: 8px;">
+        </div>
+
+        <div id="filter-controls" style="margin-top: 20px; margin-bottom: 20px; text-align: center;">
+            <div style="margin-bottom: 10px;">
+                <label for="city-filter-input" style="margin-right: 5px;">Filter by city:</label>
+                <input type="text" id="city-filter-input" class="retro-input" placeholder="Enter city...">
+            </div>
+            <div>
+                <label for="diet-filter-input" style="margin-right: 5px;">Filter by diets (G, L, VEG, etc.):</label>
+                <input type="text" id="diet-filter-input" class="retro-input" placeholder="Enter diet codes...">
+                <button id="clear-filter-button" class="retro-button" style="margin-left: 10px; background-color: #f0ad4e;">Clear All</button>
+            </div>
         </div>
 
         <div id="display-body" aria-live="polite">

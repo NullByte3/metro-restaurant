@@ -43,40 +43,35 @@ async function getRestaurantById(restaurantId) {
     }
 }
 
-async function getDailyMenuForRestaurant(restaurantId, language = 'en') {
-
-    const endpoint = `${baseUrl}api/v1/restaurants/daily/${restaurantId}/${language}`;
+async function getWeeklyMenuForRestaurant(restaurantId, language = 'en') {
+    const endpoint = `${baseUrl}api/v1/restaurants/weekly/${restaurantId}/${language}`;
     try {
         const res = await fetch(endpoint);
         if (!res.ok) {
-
-            if (res.status === 404) {
-                console.warn(`ghost/dead restaurant? ${restaurantId} (${language})`);
-
-                return { courses: null, message: 'Menu not available for today.' };
+            if (res.status === 404 || res.status >= 500) {
+                console.warn(`Skipping restaurant ${restaurantId} due to ${res.status} status`);
+                return { days: [] };
             }
-            console.error(`??????? ${restaurantId}:`, res.statusText);
-            throw new Error(`HTTP error: ${res.status}`);
+            const errorData = await res.json().catch(() => ({ message: `HTTP error: ${res.status}` }));
+            console.error(`Error fetching weekly menu for ${restaurantId}:`, res.status, errorData.message || res.statusText);
+            throw new Error(errorData.message || `Failed to fetch weekly menu: ${res.statusText}`);
         }
-
         const menuData = await res.json();
 
-        if (!menuData || !Array.isArray(menuData.courses)) {
-
-             console.warn(`Unexpected menu data structure for restaurant ${restaurantId}:`, menuData);
-
-             return { courses: null, message: 'Menu data format unexpected.' };
+        const days = Array.isArray(menuData) ? menuData : menuData?.days || [];
+        if (!Array.isArray(days)) {
+            console.warn(`Unexpected weekly menu data structure for restaurant ${restaurantId}:`, menuData);
+            return { days: [] };
         }
-        return menuData; 
+        return { days }; 
     } catch (error) {
-        console.error(`Failed to get daily menu for restaurant ${restaurantId}:`, error);
-
+        console.error(`Failed to get weekly menu for restaurant ${restaurantId}:`, error);
         throw error;
     }
 }
 
 async function login(username, password) {
-    const endpoint = `${baseUrl}api/v1/auth/login`; 
+    const endpoint = `${baseUrl}api/v1/auth/login`;
 
     try {
         const response = await fetch(endpoint, {
@@ -111,15 +106,41 @@ async function login(username, password) {
 }
 
 function updateUIForLoggedInUser(user) { 
-    console.log("User admin status:", currentUserIsAdmin); 
+    const currentUserIsAdmin = user?.role === 'admin';
 
     const loginButton = document.getElementById('login-button');
     const logoutButton = document.getElementById('logout-button');
     const userInfo = document.getElementById('user-info');
 
     loginButton.classList.add('hidden');
+    document.getElementById('edit-profile-button').classList.remove('hidden');
 
-    userInfo.textContent = `Welcome, ${user.username}! ${currentUserIsAdmin ? '(Admin)' : ''}`;
+    userInfo.innerHTML = '';
+
+    if (user.avatar) {
+        const avatarImg = document.createElement('img');
+        avatarImg.src = `${baseUrl}uploads/${user.avatar}`;
+        avatarImg.style.height = '30px';
+        avatarImg.style.borderRadius = '50%';
+        avatarImg.style.marginRight = '10px';
+        userInfo.appendChild(avatarImg);
+    }
+
+    const textContainer = document.createElement('div');
+    textContainer.style.display = 'flex';
+    textContainer.style.flexDirection = 'column';
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = `${user.username} ${currentUserIsAdmin ? '(Admin)' : ''}`;
+    textContainer.appendChild(textSpan);
+
+    const favRestaurant = document.createElement('span');
+    favRestaurant.id = 'favorite-restaurant';
+    favRestaurant.style.fontSize = '0.9em';
+    favRestaurant.textContent = user.favouriteRestaurant ? `★ Favorite: ${user.favouriteRestaurant}` : '';
+    textContainer.appendChild(favRestaurant);
+
+    userInfo.appendChild(textContainer);
     userInfo.classList.remove('hidden');
     logoutButton.classList.remove('hidden');
 
@@ -139,10 +160,132 @@ function updateUIForLoggedOutUser() {
     loginButton.classList.remove('hidden');
     userInfo.classList.add('hidden');
     logoutButton.classList.add('hidden');
-    
+    document.getElementById('edit-profile-button').classList.add('hidden');
+
     logoutButton.onclick = null;
-    
+
     userInfo.textContent = '';
+}
+
+function setupUpdateModal() {
+    const updateModal = document.getElementById('update-modal');
+    const updateButton = document.getElementById('edit-profile-button'); 
+    const closeButton = updateModal.querySelector('.close-button');
+    const updateForm = document.getElementById('update-form');
+    const updateError = document.getElementById('update-error');
+
+    async function openUpdateModal() {
+        try {
+            const userData = await getCurrentUser();
+            document.getElementById('update-username').value = userData.username;
+            document.getElementById('update-email').value = userData.email;
+
+            updateModal.style.display = 'block';
+            updateError.classList.add('hidden');
+        } catch (error) {
+            console.error("Error fetching user data for update:", error);
+        }
+    }
+
+    function closeUpdateModal() {
+        updateModal.style.display = 'none';
+    }
+
+    updateButton.onclick = openUpdateModal;
+    closeButton.onclick = closeUpdateModal;
+
+    window.onclick = function(event) {
+        if (event.target == updateModal) {
+            closeUpdateModal();
+        }
+    }
+
+    const uploadAvatarButton = document.getElementById('upload-avatar-button');
+    const avatarUploadStatus = document.getElementById('avatar-upload-status');
+    const avatarInput = document.getElementById('update-avatar');
+
+    avatarInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        const fileName = file?.name || 'No file selected';
+        document.getElementById('selected-filename').textContent = fileName;
+
+        if (!file) return;
+        if (!file) {
+            avatarUploadStatus.textContent = 'Please select a file first.';
+            avatarUploadStatus.classList.remove('hidden');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${baseUrl}api/v1/users/avatar`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: `HTTP error: ${response.status}` }));
+                throw new Error(errorData.message || 'Avatar upload failed');
+            }
+
+            const result = await response.json();
+            avatarUploadStatus.textContent = '✅ Avatar uploaded successfully!';
+            avatarUploadStatus.classList.remove('hidden');
+            avatarUploadStatus.style.color = 'green';
+            setTimeout(() => {
+                avatarUploadStatus.classList.add('hidden');
+            }, 2000);
+
+            const userData = await getCurrentUser();
+            updateUIForLoggedInUser(userData);
+
+            avatarInput.value = '';
+            document.getElementById('selected-filename').textContent = '';
+            document.getElementById('update-username').value = '';
+            document.getElementById('update-email').value = '';
+            document.getElementById('update-password').value = '';
+        } catch (error) {
+            console.error('Avatar upload failed:', error);
+            avatarUploadStatus.textContent = error.message || 'Avatar upload failed. Please check console.';
+            avatarUploadStatus.classList.remove('hidden');
+            avatarUploadStatus.style.color = 'red';
+        }
+    });
+
+    updateForm.onsubmit = async (e) => {
+        e.preventDefault();
+        updateError.classList.add('hidden');
+
+        const updateData = {};
+
+        if (document.getElementById('update-username').value) {
+            updateData.username = document.getElementById('update-username').value;
+        }
+        if (document.getElementById('update-email').value) {
+            updateData.email = document.getElementById('update-email').value;
+        }
+        if (document.getElementById('update-password').value) {
+            updateData.password = document.getElementById('update-password').value;
+        }
+
+        try {
+            const response = await updateCurrentUser(updateData);
+            const updatedUser = response.data;
+            closeUpdateModal();
+            updateUIForLoggedInUser(updatedUser);
+            document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: updatedUser }));
+        } catch (error) {
+            console.error("Update failed:", error);
+            updateError.textContent = error.message || 'Update failed. Please check console.';
+            updateError.classList.remove('hidden');
+        }
+    };
 }
 
 function setupModal() {
@@ -200,9 +343,9 @@ function setupModal() {
         try {
             const loginData = await login(username, password); 
             closeModal();
-            const userData = await getCurrentUser();
-            updateUIForLoggedInUser(userData);
-            await displayDailyMenus();
+            updateUIForLoggedInUser(loginData.data);
+
+            document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: userData }));
             console.log("Login successful", userData);
         } catch (error) {
             console.error("Incorrect data? ", error);
@@ -230,7 +373,7 @@ function setupModal() {
 
             const loginData = await login(username, password);
             closeModal();
-            updateUIForLoggedInUser(loginData.user); 
+            updateUIForLoggedInUser(loginData.data); 
         } catch (error) {
              console.error("Registration submission failed?:", error);
             registerError.textContent = error.message || 'Registration failed. Please check console.';
@@ -240,15 +383,16 @@ function setupModal() {
 }
 
 async function initializeApp() {
-    setupModal(); 
+    setupModal();
+    setupUpdateModal();
 
     if (isLoggedIn()) {
         try {
-
             const userData = await getCurrentUser();
+            currentUser = userData;
             updateUIForLoggedInUser(userData);
         } catch (error) {
-            console.error("Error fetching current user on load:", error);
+            console.error("Error fetching current user on load, vpn issue?", error);
 
             logout();
             updateUIForLoggedOutUser();
@@ -286,7 +430,7 @@ async function checkAvailability(username) {
         const data = await response.json();
         return data.available;
     } catch (error) {
-        console.error('Error checking username availability:', error.message);
+        console.error('Error checking username availability, vpn issue?', error.message);
         throw error;
     }
 }
@@ -318,13 +462,69 @@ async function createUser(username, password, email) {
 
         return data;
     } catch (error) {
-        console.error('User creation failed:', error.message);
+        console.error('User creation failed, vpn issue?', error.message);
+        throw error;
+    }
+}
+
+async function updateCurrentUser(updatedData) {
+    const endpoint = `${baseUrl}api/v1/users`;
+    const token = localStorage.getItem('authToken');
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: `HTTP error: ${response.status}` }));
+            throw new Error(errorData.message || `Failed to update user: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to update user, vpn issue?', error);
+        throw error;
+    }
+}
+
+async function updateFavoriteRestaurant(restaurantId) {
+    const endpoint = `${baseUrl}api/v1/users`;
+    const token = localStorage.getItem('authToken');
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(
+                restaurantId !== null 
+                    ? { favouriteRestaurant: restaurantId }
+                    : { favouriteRestaurant: null }
+            )
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: `HTTP error: ${response.status}` }));
+            throw new Error(errorData.message || `Failed to update favorite: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to update favorite restaurant, vpn issue?', error);
         throw error;
     }
 }
 
 async function getCurrentUser() {
-    const endpoint = `${baseUrl}api/v1/users/token`; 
+    const endpoint = `${baseUrl}api/v1/users/token`;
     const token = localStorage.getItem('authToken');
 
     if (!token) {
@@ -353,7 +553,7 @@ async function getCurrentUser() {
         }
         return userData; 
     } catch (error) {
-        console.error('Error fetching current user:', error); 
+        console.error('Error fetching current user, VPN issue?:', error); 
         throw error;
     }
 }
