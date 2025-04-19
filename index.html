@@ -7,21 +7,57 @@
     <script src="runtime.js"></script>
     <link rel="stylesheet" href="stylesheet.css">
     <title>Peppa Pig Pizzeria</title>
-    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="icon" href="favicon.png">
 </head>
 <body>
     <header class="navbar">
-        <!-- TODO: SETUP THE LOGIN SHIT -->
-        <div class="logo">Restaurantly</div>
-        <button class="retro-button" style="background-color: #6ed4dd" onclick="">LOGIN</button>
-      </header>
-  
-    <!-- TODO: SETUP THE LOGIN SHIT -->
+        <div class="logo">Peppa Piga Pizzeria</div>
+        <div id="auth-controls">
+            <span id="user-info" class="hidden" style="margin-right: 10px;"></span>
+            <button id="logout-button" class="retro-button hidden" style="background-color: #ff6b6b;">LOGOUT</button>
+            <button id="login-button" class="retro-button" style="background-color: #6ed4dd">LOGIN</button>
+        </div>
+    </header>
+
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="login-view">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <input type="text" id="login-username" placeholder="Username" required class="retro-input"><br><br>
+                    <input type="password" id="login-password" placeholder="Password" required class="retro-input"><br><br>
+                    <button type="submit" class="retro-button">Login</button>
+                    <p id="login-error" class="error hidden"></p>
+                </form>
+                <p>Don't have an account? <a href="#" id="show-register">Register</a></p>
+            </div>
+            <div id="register-view" class="hidden">
+                <h2>Register</h2>
+                <form id="register-form">
+                    <input type="text" id="register-username" placeholder="Username" required class="retro-input"><br><br>
+                    <input type="email" id="register-email" placeholder="Email" required class="retro-input"><br><br>
+                    <input type="password" id="register-password" placeholder="Password" required class="retro-input"><br><br>
+                    <button type="submit" class="retro-button">Register</button>
+                    <p id="register-error" class="error hidden"></p>
+                </form>
+                <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+            </div>
+        </div>
+    </div>
     <main class="content">
-        <h2>Here are a list of restaurants near ya!</h2>
+        <h2>Today's Student Restaurant Menus</h2>
+
+        <div id="filter-controls" style="margin-bottom: 20px; text-align: center;">
+            <label for="diet-filter-input" style="margin-right: 5px;">Filter by diets (G, L, VEG, etc.):</label>
+            <input type="text" id="diet-filter-input" class="retro-input" placeholder="Enter diet codes...">
+            <button id="clear-filter-button" class="retro-button" style="margin-left: 10px; background-color: #f0ad4e;">Clear</button>
+        </div>
+
         <div id="display-body" aria-live="polite">
+            <p>Loading menus...</p>
         </div>
       </main>
-      
+
 </body>
 </html>
