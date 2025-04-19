@@ -22,10 +22,11 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const deltaLatRad = (lat2 - lat1) * Math.PI/180;
     const deltaLonRad = (lng2 - lng1) * Math.PI/180;
     
-    const haversineComponent = Math.sin(deltaLatRad/2)**2 
-        + Math.cos(lat1Rad) * Math.cos(lat2Rad) 
+    const haversineComponent = Math.sin(deltaLatRad/2)**2
+        + Math.cos(lat1Rad) * Math.cos(lat2Rad)
         * Math.sin(deltaLonRad/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const centralAngle = 2 * Math.atan2(Math.sqrt(haversineComponent), Math.sqrt(1 - haversineComponent));
+    return earthRadiusKm * centralAngle;
 };
 
 const displayDailyMenus = async () => {
